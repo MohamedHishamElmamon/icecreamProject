@@ -46,13 +46,13 @@ LATERAL VIEW EXPLODE(all_days_in_2023) AS d;
 
 CREATE TABLE IF NOT EXISTS icecreamdb.gold.dim_product (
     product_sk          BIGINT GENERATED ALWAYS AS IDENTITY,
-    product_code        STRING     NOT NULL,  -- Business key
-    product_name        STRING     NOT NULL,
+    product_code        STRING     ,  -- Business key
+    product_name        STRING     ,
     price               DOUBLE,
     -- SCD Type 2 columns
-    effective_start_dt  TIMESTAMP  NOT NULL,
-    effective_end_dt    TIMESTAMP  NOT NULL,  -- typically some high date like '9999-12-31' if current
-    is_current          BOOLEAN    NOT NULL,
+    effective_start_dt  TIMESTAMP  ,
+    effective_end_dt    TIMESTAMP  ,  -- typically some high date like '9999-12-31' if current
+    is_current          BOOLEAN    ,
 
     
     CONSTRAINT pk_dim_product PRIMARY KEY (product_sk)
@@ -64,13 +64,13 @@ LOCATION 'abfss://icecreamblob@psmltest9911652735.dfs.core.windows.net/gold/dim_
 
 CREATE TABLE IF NOT EXISTS icecreamdb.gold.dim_country (
     country_sk          BIGINT GENERATED ALWAYS AS IDENTITY,
-    country_name        STRING NOT NULL,
+    country_name        STRING ,
     country_index       DOUBLE,
     average_price       DOUBLE,
     -- SCD Type 2 columns
-    effective_start_dt  TIMESTAMP NOT NULL,
-    effective_end_dt    TIMESTAMP NOT NULL,
-    is_current          BOOLEAN   NOT NULL,
+    effective_start_dt  TIMESTAMP ,
+    effective_end_dt    TIMESTAMP ,
+    is_current          BOOLEAN   ,
     
     CONSTRAINT pk_dim_country PRIMARY KEY (country_sk)
 )
