@@ -1,0 +1,185 @@
+{
+	"name": "WeatherApi_Pipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "Weather API Data",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Set Watermark Variable",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "RestSource",
+						"httpRequestTimeout": "00:01:40",
+						"requestInterval": "00.00:00:00.010",
+						"requestMethod": "GET",
+						"paginationRules": {
+							"supportRFC5988": "true"
+						}
+					},
+					"sink": {
+						"type": "JsonSink",
+						"storeSettings": {
+							"type": "AzureBlobStorageWriteSettings"
+						},
+						"formatSettings": {
+							"type": "JsonWriteSettings"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "WaethereApi_Source",
+						"type": "DatasetReference",
+						"parameters": {
+							"end_date": {
+								"value": "@variables('watermark')",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "WatherAPI_Target_Dataset",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Weather Watermark Value",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OdbcSource",
+						"query": "select Distinct cast(watermark_value AS DATE) AS watermark_value from icecreamdb.metadata_config.bronze_watermark \nWHERE table_name = 'weather_api'\nAND status = 'ACTIVE';",
+						"queryTimeout": "02:00:00"
+					},
+					"dataset": {
+						"referenceName": "Databricks_Source",
+						"type": "DatasetReference",
+						"parameters": {
+							"layer": "metadata_config.bronze_watermark"
+						}
+					}
+				}
+			},
+			{
+				"name": "Set Watermark Variable",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Weather Watermark Value",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "watermark",
+					"value": {
+						"value": "@string(activity('Weather Watermark Value').output.firstRow.watermark_value)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Set Watermark New Variable",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Weather API Data",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "watermar_new_value",
+					"value": {
+						"value": "@string(utcNow())",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Update Config Table",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "Set Watermark New Variable",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/rami.moughrabi@paragonshift.com/update_config_tables",
+					"baseParameters": {
+						"pipeline_name": "WeatherApi_Pipeline",
+						"watermark_value": {
+							"value": "@variables('watermar_new_value')",
+							"type": "Expression"
+						},
+						"target_table": "bronze_watermark"
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureDatabricks1",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"variables": {
+			"watermark": {
+				"type": "String"
+			},
+			"watermar_new_value": {
+				"type": "String"
+			}
+		},
+		"annotations": []
+	}
+}

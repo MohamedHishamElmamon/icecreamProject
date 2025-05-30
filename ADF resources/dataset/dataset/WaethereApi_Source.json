@@ -1,0 +1,23 @@
+{
+	"name": "WaethereApi_Source",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "WeatherApi",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"end_date": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "RestResource",
+		"typeProperties": {
+			"relativeUrl": {
+				"value": "@concat(\n  'VisualCrossingWebServices/rest/services/timeline/europe/',dataset().end_date,'/',\n   formatDateTime(utcNow(), 'yyyy-MM-dd'),\n   '?unitGroup=metric&include=hours&key=AB4UKRD5GE2JL7VLSV2VKNHCA&contentType=json'\n)",
+				"type": "Expression"
+			}
+		},
+		"schema": []
+	}
+}

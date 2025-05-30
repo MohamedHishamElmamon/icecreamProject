@@ -1,0 +1,222 @@
+{
+	"name": "SalesTransactions_Pipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "Sales Transactions Data",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Set Watermark Variable",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "@concat(\n  'select *  from dbo.sales_transactions WHERE sales_date_time >''',\n  variables('watermark'),\n  ''''\n)",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "ParquetSink",
+						"storeSettings": {
+							"type": "AzureBlobStorageWriteSettings"
+						},
+						"formatSettings": {
+							"type": "ParquetWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SalesTransactions_Source",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "SalesTransactions_Target",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Sales Watermark Value",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OdbcSource",
+						"query": "select Distinct watermark_value from icecreamdb.metadata_config.bronze_watermark \nWHERE table_name = 'sales_transactions'\nAND status = 'ACTIVE';",
+						"queryTimeout": "02:00:00"
+					},
+					"dataset": {
+						"referenceName": "Databricks_Source",
+						"type": "DatasetReference",
+						"parameters": {
+							"layer": "metadata_config.bronze_watermark"
+						}
+					}
+				}
+			},
+			{
+				"name": "Set Watermark Variable",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Sales Watermark Value",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "watermark",
+					"value": {
+						"value": "@string(activity('Sales Watermark Value').output.firstRow.watermark_value)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Sales Watermark New Value",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Sales Transactions Data",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "  select max(sales_date_time) sales_date_time from dbo.sales_transactions\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "SalesTransactions_Source",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "Set Watermark New Variable",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Sales Watermark New Value",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "watermar_new_value",
+					"value": {
+						"value": "@string(activity('Sales Watermark New Value').output.firstRow.sales_date_time)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Update Config Table",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "Set Watermark New Variable",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/rami.moughrabi@paragonshift.com/update_config_tables",
+					"baseParameters": {
+						"pipeline_name": "Sales_Transactions_Pipeline",
+						"watermark_value": {
+							"value": "@variables('watermar_new_value')",
+							"type": "Expression"
+						},
+						"target_table": "bronze_watermark"
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureDatabricks1",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"variables": {
+			"watermark": {
+				"type": "String"
+			},
+			"watermar_new_value": {
+				"type": "String"
+			},
+			"test": {
+				"type": "String"
+			}
+		},
+		"annotations": []
+	}
+}

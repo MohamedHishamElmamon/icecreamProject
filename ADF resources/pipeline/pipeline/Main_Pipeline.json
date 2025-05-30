@@ -1,0 +1,174 @@
+{
+	"name": "Main_Pipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "API",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "WeatherApi_Pipeline",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "Azure_SQL_DB",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "SalesTransactions_Pipeline",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "Silver_Processing_Notbook",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "API",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Azure_SQL_DB",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/rami.moughrabi@paragonshift.com/Silver/Silver_Data_Processing"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureDatabricks1",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "etl_error_logs_sql",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "Azure_SQL_DB",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/rami.moughrabi@paragonshift.com/etl_error_notebook",
+					"baseParameters": {
+						"error_source": "sales_transactions",
+						"error_message": {
+							"value": "@activity('Azure_SQL_DB').output.errors[0].Message",
+							"type": "Expression"
+						},
+						"pipeline_name": "SalesTransactions_Pipeline",
+						"layer": "bronze",
+						"additional_details": "there is Failure in SalesTransactions_Pipeline"
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureDatabricks1",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "etl_error_logs_api",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "API",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/rami.moughrabi@paragonshift.com/etl_error_notebook",
+					"baseParameters": {
+						"error_source": "Weather_API",
+						"error_message": {
+							"value": "@activity('API').output.errors[0].Message",
+							"type": "Expression"
+						},
+						"pipeline_name": "WeatherApi_Pipeline",
+						"layer": "bronze",
+						"additional_details": "there is Failure in WeatherApi_Pipeline"
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureDatabricks1",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Gold_Processing_Notbook",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "Silver_Processing_Notbook",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/rami.moughrabi@paragonshift.com/Gold/gold_data_processing"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureDatabricks1",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"annotations": []
+	}
+}

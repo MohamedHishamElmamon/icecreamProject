@@ -1,0 +1,23 @@
+{
+	"name": "Databricks_Source",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "DatabricksODBC",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"layer": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "OdbcTable",
+		"schema": [],
+		"typeProperties": {
+			"tableName": {
+				"value": "@concat('icecreamdb.',dataset().layer)",
+				"type": "Expression"
+			}
+		}
+	}
+}

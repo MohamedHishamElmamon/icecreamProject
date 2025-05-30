@@ -1,0 +1,23 @@
+{
+	"name": "SalesTransactions_Target",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureBlobStorage",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"folderPath": {
+					"value": "@concat(\n  'bronze/TransactionDB/',\n  utcNow('yyyy-MM-dd')\n)",
+					"type": "Expression"
+				},
+				"container": "icecreamblob"
+			},
+			"compressionCodec": "snappy"
+		},
+		"schema": []
+	}
+}

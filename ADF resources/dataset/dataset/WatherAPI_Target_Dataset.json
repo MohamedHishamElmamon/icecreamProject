@@ -1,0 +1,22 @@
+{
+	"name": "WatherAPI_Target_Dataset",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureBlobStorage",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"folderPath": {
+					"value": "@concat(\n  'bronze/API/',\n  utcNow('yyyy-MM-dd')\n)",
+					"type": "Expression"
+				},
+				"container": "icecreamblob"
+			}
+		},
+		"schema": {}
+	}
+}
